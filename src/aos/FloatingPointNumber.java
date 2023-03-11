@@ -14,7 +14,7 @@ public class FloatingPointNumber {
 
     // With normal bit
     public final int mantissaLength;
-    public double floatNumber;
+    public double value;
 
     public final double MAX_FLOAT = 4080;
     public final double MIN_FLOAT = -4080;
@@ -30,14 +30,16 @@ public class FloatingPointNumber {
     }
 
     public FloatingPointNumber(boolean sign, boolean[] whole, boolean[] fraction) {
-        converter = new Converter();
-        exponentLength = Program.exponentLength;
-        mantissaLength = Program.mantissaLength;
-        SMALLEST_POSITIVE = Math.pow(2, -exponentLength);
-        exponent = new boolean[exponentLength];
-        mantissa = new boolean[mantissaLength];
+        this();
         this.sign = sign;
         toFloatNumber(whole, fraction);
+        toDecimalNumber();
+    }
+
+    public FloatingPointNumber(double value){
+        this();
+        this.sign = value < 0;
+        toFloatNumber(converter.wholeToBinary((int) value), converter.fractionalToBinary(value - (int) value));
         toDecimalNumber();
     }
     private void toFloatNumber(boolean[] whole, boolean[] fraction){
@@ -65,8 +67,7 @@ public class FloatingPointNumber {
                 for (int i = 1, k = indexOfFractionOne; i < mantissaLength; i++, k++) {
                     mantissa[i] = fraction[k];
                 }
-            } else
-                if(indexOfFractionOne == -1){
+            } else if(indexOfFractionOne == -1){
                 // zero
                 normalBit = false;
                 int exponentValue = -((int) Math.pow(2, exponentLength - 1) - 1);
@@ -89,10 +90,10 @@ public class FloatingPointNumber {
         int exponentValue = converter.binaryToWhole(exponent);
         int bias = (int) Math.pow(2, exponentLength - 1) - 1;
         if(normalBit) {
-            floatNumber = Math.pow(-1, (sign ? 1 : 0)) * (1 + fraction) * Math.pow(2, exponentValue - bias);
+            value = Math.pow(-1, (sign ? 1 : 0)) * (1 + fraction) * Math.pow(2, exponentValue - bias);
         } else{
             exponentValue = -bias + 1;
-            floatNumber = Math.pow(-1, (sign ? 1 : 0)) * (fraction) * Math.pow(2, exponentValue - bias);
+            value = Math.pow(-1, (sign ? 1 : 0)) * (fraction) * Math.pow(2, exponentValue - bias);
         }
     }
 
@@ -139,6 +140,44 @@ public class FloatingPointNumber {
 
     public void setMantissa(boolean value) {
         Arrays.fill(mantissa, value);
+    }
+
+    public boolean isInfinite(){
+        for (int i = 0; i < exponentLength; i++) {
+            if (!exponent[i])
+                return false;
+        }
+        // mantissa[0] -- normal bit
+        for (int i = 1; i < mantissaLength; i++) {
+            if (mantissa[i])
+                return false;
+        }
+        return true;
+    }
+
+    public boolean isNan(){
+        for (int i = 0; i < exponentLength; i++) {
+            if(!exponent[i])
+                return false;
+        }
+
+        boolean one = false;
+        boolean zero = false;
+        for (int i = 1; i < mantissaLength; i++) {
+            if (mantissa[i])
+                one = true;
+            else zero = true;
+        }
+        return one && zero;
+    }
+
+    public String getStringValue(){
+        if (isInfinite())
+            return (sign ? "-" : "") + "inf";
+        else if(isNan())
+            return "NaN";
+
+        return String.format("%e", value);
     }
 
 }

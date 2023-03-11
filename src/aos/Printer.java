@@ -31,7 +31,7 @@ public class Printer {
                 boolArrToStr(floatNum.exponent, 0),
                 boolToStr(floatNum.normalBit),
                 boolArrToStr(floatNum.mantissa, 1),
-                String.valueOf(floatNum.floatNumber)};
+                String.valueOf(floatNum.value)};
         return values;
     }
     private void formatAndPrint(String[] labels, String[] values) {
@@ -67,7 +67,7 @@ public class Printer {
     private String boolArrToStr(boolean[] arr, int index){
         StringBuilder sb = new StringBuilder(arr.length - 1);
         for (int i = index; i < arr.length; i++) {
-            sb.append((boolToStr(arr[i])));
+            sb.append(boolToStr(arr[i]));
         }
         return sb.toString();
     }
