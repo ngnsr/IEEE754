@@ -31,7 +31,7 @@ public class Printer {
                 boolArrToStr(floatNum.exponent, 0),
                 boolToStr(floatNum.normalBit),
                 boolArrToStr(floatNum.mantissa, 1),
-                String.valueOf(floatNum.value)};
+                floatNum.getStringValue()};
         return values;
     }
     private void formatAndPrint(String[] labels, String[] values) {

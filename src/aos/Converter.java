@@ -1,5 +1,6 @@
 package aos;
 
+import java.math.BigDecimal;
 import java.util.BitSet;
 public class Converter {
     private final int exponentLength;
@@ -11,8 +12,11 @@ public class Converter {
         mantissaLength = Program.mantissaLength;
     }
 
-    double expDecToDec(String num){
-        String[] parts = num.split("[eE]");
+    BigDecimal expDecToBigDecimal(String value){
+        return new BigDecimal(value);
+    }
+    double expDecToDec(String value){
+        String[] parts = value.split("[eE]");
         double M = Double.parseDouble(parts[0]);
         byte p = Byte.parseByte(parts[1]);
         M *= Math.pow(base, p);
@@ -29,24 +33,25 @@ public class Converter {
 //            return binary;
 //        }
 
-        for (int i = exponentLength - 1; n > 0; i--) {
+        for (int i = exponentLength - 1; n > 0 && i >= 0; i--) {
             binary[i] = n % base == 1;
             n /= base;
         }
         return binary;
     }
 
-    boolean[] fractionalToBinary(double fractional){
-        fractional = fractional - (int) fractional;
-        fractional = Math.abs(fractional);
-        double c = 1;
+    boolean[] fractionalToBinary(BigDecimal fractional){
+        fractional = fractional.remainder(BigDecimal.ONE);
+        fractional = fractional.abs();
+        BigDecimal c = BigDecimal.ONE;
         BitSet binary = new BitSet();
+        BigDecimal TWO = BigDecimal.valueOf(2);
 
-        for (int i = 0, setBits = 0; fractional > 0 && setBits < mantissaLength; i++) {
-            c /= 2;
-            if (c <= fractional){
+        for (int i = 0, setBits = 0; fractional.compareTo(BigDecimal.valueOf(0)) > 0 && setBits < mantissaLength; i++) {
+            c = c.divide(TWO);
+            if (c.compareTo(fractional) <= 0){
                 binary.set(i, true);
-                fractional -= c;
+                fractional = fractional.subtract(c);
                 setBits++;
             }
         }
