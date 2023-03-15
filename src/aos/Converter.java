@@ -1,62 +1,60 @@
 package aos;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.BitSet;
+
 public class Converter {
     private final int exponentLength;
     private final int mantissaLength;
-    public static final byte base = 10;
 
     public Converter() {
         exponentLength = Program.exponentLength;
         mantissaLength = Program.mantissaLength;
     }
 
-    BigDecimal expDecToBigDecimal(String value){
-        return new BigDecimal(value);
-    }
-    double expDecToDec(String value){
-        String[] parts = value.split("[eE]");
-        double M = Double.parseDouble(parts[0]);
-        byte p = Byte.parseByte(parts[1]);
-        M *= Math.pow(base, p);
-        return M;
-    }
-    boolean[] wholeToBinary(int n){
-        n = Math.abs(n);
-        final int base = 2;
-        boolean[] binary = new boolean[exponentLength];
-//        if(n > Math.pow(base, exponentLength) - 1) {
-////            for (int i = 0; i < h; i++) {
-////               binary[i] = true;
-////            }
-//            return binary;
-//        }
-
-        for (int i = exponentLength - 1; n > 0 && i >= 0; i--) {
-            binary[i] = n % base == 1;
-            n /= base;
+    boolean[] wholeToBinary(BigInteger n){
+        ArrayList<Boolean> binary = new ArrayList<>(50);
+        n = n.abs();
+        final BigInteger base = new BigInteger("2");
+        while(n.compareTo(BigInteger.ZERO) > 0){
+            binary.add(0, n.mod(base).equals(BigInteger.ONE));
+            n = n.divide(base);
         }
-        return binary;
+        for (int i = binary.size(); i < exponentLength ; i++) {
+            binary.add(0, false);
+        }
+        return toPrimitiveArray(binary);
+    }
+
+    boolean[] toPrimitiveArray(final ArrayList<Boolean> booleanList) {
+        final boolean[] primitives = new boolean[booleanList.size()];
+        int index = 0;
+        for (Boolean bool : booleanList) {
+            primitives[index++] = bool;
+        }
+        return primitives;
     }
 
     boolean[] fractionalToBinary(BigDecimal fractional){
         fractional = fractional.remainder(BigDecimal.ONE);
         fractional = fractional.abs();
-        BigDecimal c = BigDecimal.ONE;
-        BitSet binary = new BitSet();
-        BigDecimal TWO = BigDecimal.valueOf(2);
+        BigDecimal current = BigDecimal.ONE;
+        ArrayList<Boolean> binary = new ArrayList<>(20);
+        final BigDecimal base = BigDecimal.valueOf(2);
 
-        for (int i = 0, setBits = 0; fractional.compareTo(BigDecimal.valueOf(0)) > 0 && setBits < mantissaLength; i++) {
-            c = c.divide(TWO);
-            if (c.compareTo(fractional) <= 0){
-                binary.set(i, true);
-                fractional = fractional.subtract(c);
+        for (int setBits = 0; fractional.compareTo(BigDecimal.valueOf(0)) > 0 && setBits < mantissaLength; ) {
+            current = current.divide(base);
+            if (current.compareTo(fractional) <= 0){
+                binary.add(true);
+                fractional = fractional.subtract(current);
                 setBits++;
-            }
+            } else
+                binary.add(false);
         }
 
-        return bitSetToBoolArr(binary);
+        return toPrimitiveArray(binary);
     }
 
     int binaryToWhole(boolean[] binary){
@@ -66,23 +64,14 @@ public class Converter {
         }
         return sum;
     }
-    double mantissaToFraction(boolean[] binary){
-        double sum = 0;
+    BigDecimal mantissaToFraction(boolean[] binary){
+        BigDecimal sum = BigDecimal.ZERO;
 
         // first bit is normal bit
         for (int i = 1; i < binary.length; i++) {
-            sum += (binary[i] ? 1 : 0 ) * Math.pow(2, -i);
+            sum = sum.add((binary[i] ? BigDecimal.ONE : BigDecimal.ZERO).divide(new BigDecimal(2).pow(i)));
         }
         return sum;
-    }
-
-    boolean[] bitSetToBoolArr(BitSet bitSet){
-        int length = bitSet.length();
-        boolean[] binary = new boolean[length];
-        for (int i = 0; i < length; i++) {
-            binary[i] = bitSet.get(i);
-        }
-        return binary;
     }
 
     String binaryToString(boolean[] binary){

@@ -1,75 +1,61 @@
 package aos;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.Arrays;
+import java.util.List;
 
 public class FloatingPointNumber {
 
-    // delete
     Converter converter;
     public boolean sign;
     public boolean[] exponent;
     public boolean normalBit;
     public boolean[] mantissa;
+
     public final int exponentLength;
 
     // With normal bit
     public final int mantissaLength;
     public BigDecimal value;
-
-    public final double MAX_FLOAT = 4080;
-    public final double MIN_FLOAT = -4080;
-    public final double SMALLEST_POSITIVE;
+    public final BigDecimal MAX_FLOAT;
+    public final BigDecimal MIN_FLOAT;
+//    public final double SMALLEST_POSITIVE;
 
     public FloatingPointNumber() {
         converter = new Converter();
         exponentLength = Program.exponentLength;
         mantissaLength = Program.mantissaLength;
-        SMALLEST_POSITIVE = Math.pow(2, -exponentLength);
+        BigDecimal base = new BigDecimal(2);
+        MAX_FLOAT = base.pow((int) Math.pow(2, exponentLength - 1)).multiply(base.subtract(BigDecimal.ONE.divide(base.pow(mantissaLength))));
+        MIN_FLOAT = MAX_FLOAT.negate();
+
         exponent = new boolean[exponentLength];
         mantissa = new boolean[mantissaLength];
-        toDecimalNumber();
-    }
-
-    public FloatingPointNumber(boolean sign, boolean[] whole, boolean[] fraction) {
-        this();
-        this.sign = sign;
-        if(isInfinite()){
-            setInfinite(sign);
-        } else if (isNan()) {
-            setNan();
-        }
-        toFloatNumber(whole, fraction);
-        toDecimalNumber();
-    }
-
-    private void setNan() {
-        setExponent(true);
-        mantissa[1] = true;
-        mantissa[2] = false;
+        value = BigDecimal.ZERO;
     }
 
     public FloatingPointNumber(String stringValue) {
         this();
-        value = converter.expDecToBigDecimal(stringValue);
+        BigDecimal value = new BigDecimal(stringValue);
         this.sign = value.compareTo(new BigDecimal(0)) < 0;
 
-        if (value.compareTo(new BigDecimal(MAX_FLOAT)) > 0)
-            setInfinite(false);
-        else if (value.compareTo(new BigDecimal(MIN_FLOAT)) < 0)
-            setInfinite(true);
+        if (value.compareTo(MAX_FLOAT) > 0)
+            setInfinity(false);
+        else if (value.compareTo(MIN_FLOAT) < 0)
+            setInfinity(true);
         else {
-            toFloatNumber(converter.wholeToBinary(value.intValue()), converter.fractionalToBinary(value));
-            toDecimalNumber();
+            convertTo(converter.wholeToBinary(value.toBigInteger()), converter.fractionalToBinary(value));
+            calculateValue();
         }
     }
 
-    private void toFloatNumber(boolean[] whole, boolean[] fraction) {
+    private void convertTo(boolean[] whole, boolean[] fraction) {
         int bias;
         int indexOfWholeOne = indexOfOne(whole);
         if (indexOfWholeOne != -1) {
             normalBit = true;
-            bias = exponentLength - (indexOfWholeOne + 1);
+            bias = whole.length - (indexOfWholeOne + 1);
             setExponent(bias);
             int i = 0;
             for (int k = indexOfWholeOne; i < mantissaLength && k < whole.length; i++, k++) {
@@ -84,9 +70,8 @@ public class FloatingPointNumber {
                 // subnormal
                 normalBit = false;
                 int exponentValue = -((int) Math.pow(2, exponentLength - 1) - 1);
-                System.out.println("bias " + exponentValue);
                 setExponent(exponentValue);
-                for (int i = 1, k = Math.abs(exponentValue) - 1; i < mantissaLength; i++, k++) {
+                for (int i = 1, k = Math.abs(exponentValue) - 1; i < mantissaLength && k < fraction.length; i++, k++) {
                     mantissa[i] = fraction[k];
                 }
             } else if (indexOfFractionOne == -1) {
@@ -98,7 +83,6 @@ public class FloatingPointNumber {
                 // < 1
                 normalBit = true;
                 bias = -(indexOfFractionOne + 1);
-                System.out.println("bias " + bias);
                 setExponent(bias);
                 for (int i = 0, k = indexOfFractionOne; i < mantissaLength && k < fraction.length; i++, k++) {
                     mantissa[i] = fraction[k];
@@ -107,14 +91,12 @@ public class FloatingPointNumber {
         }
     }
 
-    public void toDecimalNumber() {
-        double fraction = converter.mantissaToFraction(mantissa);
+    public void calculateValue() {
+        BigDecimal fraction = converter.mantissaToFraction(mantissa);
         int exponentValue = converter.binaryToWhole(exponent);
         int bias = (int) Math.pow(2, exponentLength - 1) - 1;
-        // todo bigdecimal pow can be only positive
-//        value = new BigDecimal(2);
         if (normalBit) {
-            value = new BigDecimal(1 + fraction);
+            value = BigDecimal.ONE.add(fraction);
 
             if (exponentValue - bias < 0)
                 value = value.divide(new BigDecimal(2).pow(Math.abs(exponentValue - bias)));
@@ -123,15 +105,15 @@ public class FloatingPointNumber {
 
         } else {
             exponentValue = bias - 1;
-            value = new BigDecimal(fraction);
+            value = fraction;
             value = value.divide(new BigDecimal(2).pow(exponentValue));
         }
         value = value.multiply(BigDecimal.valueOf(Math.pow(-1, (sign ? 1 : 0))));
     }
 
-    private void setExponent(int p) {
-        int exponentValue = p + (int) Math.pow(2, exponentLength - 1) - 1;
-        exponent = converter.wholeToBinary(exponentValue);
+    private void setExponent(int bias) {
+        int exponentValue = bias + (int) Math.pow(2, exponentLength - 1) - 1;
+        exponent = converter.wholeToBinary(BigInteger.valueOf(exponentValue));
     }
 
     private int indexOfOne(boolean[] binary) {
@@ -142,11 +124,7 @@ public class FloatingPointNumber {
         return -1;
     }
 
-    public void setExponent(boolean[] exponent) {
-        this.exponent = exponent;
-    }
-
-    public void setExponent(boolean value) {
+    public void fillExponent(boolean value) {
         Arrays.fill(exponent, value);
     }
 
@@ -158,11 +136,7 @@ public class FloatingPointNumber {
         this.normalBit = normalBit;
     }
 
-    public void setMantissa(boolean[] mantissa) {
-        this.mantissa = mantissa;
-    }
-
-    public void setMantissa(boolean value) {
+    public void fillMantissa(boolean value) {
         Arrays.fill(mantissa, value);
     }
 
@@ -201,13 +175,30 @@ public class FloatingPointNumber {
         else if (isNan())
             return "NaN";
 
-        return String.format("%e", value);
+        return String.format("%.10e", value);
     }
 
-    private void setInfinite(boolean sign) {
-        setExponent(true);
-        setMantissa(false);
+    public void setInfinity(boolean sign) {
+        fillExponent(true);
+        fillMantissa(false);
         setSign(sign);
+    }
+
+    public List<String> getList(){
+        String exponentString = converter.binaryToString(exponent);
+        String mantissaString = converter.binaryToString(mantissa).substring(1);
+        List<String> list = Arrays.asList((sign ? "1" : "0"),
+                exponentString,
+                (normalBit ? "1" : "0"),
+                mantissaString,
+                getStringValue());
+        return list;
+    }
+
+    public void setNaN() {
+        fillExponent(true);
+        mantissa[1] = true;
+        mantissa[2] = false;
     }
 
 }

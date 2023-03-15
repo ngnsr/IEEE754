@@ -1,74 +1,121 @@
 package aos;
 
-public class Printer {
-    private final FloatingPointNumber floatNum;
+import java.util.Arrays;
+import java.util.List;
 
-    public Printer(FloatingPointNumber floatNum) {
-        this.floatNum = floatNum;
+public class Printer {
+    private FloatingPointNumber fp;
+
+    public Printer() {
+        fp = new FloatingPointNumber();
     }
 
-    public void printInReadableForm(){
-        String[] labels = getLabelsStringArr();
-        String[] values = floatNumToStringArr(floatNum);
-        formatAndPrint(labels, values);
+    public void printConvertedRow(List<String> row){
+        printTable(Arrays.asList(getHeadersList(), row));
     }
 
     public void printListing(){
-
+        printTable(getListing());
     }
 
-    private String[] getLabelsStringArr(){
+    public void printTable(List<List<String>> rows ) {
+        int[] maxLengths = new int[rows.get(0).size()];
+        for (List<String> row : rows) {
+            for (int i = 0; i < row.size(); i++) {
+                maxLengths[i] = Math.max(maxLengths[i], row.get(i).length());
+            }
+        }
+
+        StringBuilder formatBuilder = new StringBuilder();
+        for (int maxLength : maxLengths) {
+            formatBuilder.append("%-").append(maxLength + 2).append("s");
+        }
+        String format = formatBuilder.toString();
+
+        StringBuilder result = new StringBuilder();
+        for (List<String> row : rows) {
+            result.append(String.format(format, row.toArray(new String[0]))).append("\n");
+        }
+        System.out.println(result);
+    }
+
+    private List<List<String>> getListing() {
+        List<String> headers = getHeadersList();
+        List<String> minimumNonZero = getMinimumNonZeroList();
+        List<String> maximum = getMaximumList();
+        List<String> minimum = getMinimumList();
+        List<String> one = getOneList();
+        List<String> positiveInfinity = getPositiveInfList();
+        List<String> negativeInfinity = getNegativeInfList();
+        List<String> denormalized = getDenormalizedList();
+        List<String> NaN = getNaNList();
+        return Arrays.asList(headers, minimumNonZero, maximum,
+                minimum, one, positiveInfinity,
+                negativeInfinity, denormalized, NaN);
+    }
+
+    // Normal
+    private List<String> getMinimumNonZeroList() {
+        fp.fillExponent(false);
+        fp.setNormalBit(true);
+        fp.fillMantissa(false);
+        fp.exponent[fp.exponentLength - 1] = true;
+        fp.calculateValue();
+        return fp.getList();
+    }
+
+    private List<String> getMaximumList() {
+        fp.fillExponent(true);
+        fp.exponent[fp.exponentLength - 1] = false;
+        fp.normalBit = true;
+        fp.fillMantissa(true);
+        fp.calculateValue();
+        return fp.getList();
+    }
+
+    private List<String> getMinimumList() {
+        fp.sign = true;
+        fp.fillExponent(true);
+        fp.exponent[fp.exponentLength - 1] = false;
+        fp.normalBit = true;
+        fp.fillMantissa(true);
+        fp.calculateValue();
+        return fp.getList();
+    }
+
+    private List<String> getOneList() {
+        fp = new FloatingPointNumber("1.0E0");
+        return fp.getList();
+    }
+
+    private List<String> getPositiveInfList() {
+        fp.setInfinity(false);
+        return fp.getList();
+    }
+
+    private List<String> getNegativeInfList() {
+        fp.setInfinity(true);
+        return fp.getList();
+    }
+
+    private List<String> getDenormalizedList() {
+        fp = new FloatingPointNumber("1.0E-616");
+        return fp.getList();
+    }
+
+    private List<String> getNaNList() {
+        fp = new FloatingPointNumber();
+        fp.setNaN();
+        fp.calculateValue();
+        return fp.getList();
+    }
+
+    private List<String> getHeadersList() {
         String sign = "Sign";
         String exponent = "Exponent";
         String normalBit = "Normal Bit";
         String mantissa = "Mantissa";
         String decimal = "Decimal";
-        return new String[]{sign, exponent, normalBit, mantissa, decimal};
-    }
-
-    private String[] floatNumToStringArr(FloatingPointNumber floatNum){
-        String[] values = {boolToStr(floatNum.sign),
-                boolArrToStr(floatNum.exponent, 0),
-                boolToStr(floatNum.normalBit),
-                boolArrToStr(floatNum.mantissa, 1),
-                floatNum.getStringValue()};
-        return values;
-    }
-    private void formatAndPrint(String[] labels, String[] values) {
-        if (labels.length != values.length || labels.length < 2 || values.length < 2) {
-            return;
-        }
-        for (int i = 0; i < values.length; i++) {
-            int labelsElementLen = labels[i].length();
-            int valuesElementLen = values[i].length();
-            int len = Math.max(valuesElementLen, labelsElementLen);
-            values[i] = fill(values[i], len);
-            labels[i] = fill(labels[i], len);
-        }
-
-        for (int i = 0; i < labels.length - 1; i++) {
-            System.out.print(labels[i] + " | ");
-        }
-        System.out.println(labels[labels.length - 1]);
-        for (int i = 0; i < values.length - 1; i++) {
-            System.out.print(values[i] + " | ");
-        }
-        System.out.println(values[values.length - 1]);
-    }
-
-    private String fill(String str, int len){
-        return str + " ".repeat(Math.max(len - str.length(), 0));
-    }
-
-    private String boolToStr(boolean bool){
-        return (bool ? "1" : "0");
-    }
-
-    private String boolArrToStr(boolean[] arr, int index){
-        StringBuilder sb = new StringBuilder(arr.length - 1);
-        for (int i = index; i < arr.length; i++) {
-            sb.append(boolToStr(arr[i]));
-        }
-        return sb.toString();
+        return Arrays.asList(sign, exponent, normalBit, mantissa, decimal);
     }
 }
