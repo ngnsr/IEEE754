@@ -16,7 +16,7 @@ public class Reader {
     }
 
     private boolean expNumIsValid(String input) {
-        String regex = "[+-]?\\d\\.\\d+[eE][+-]?\\d+";
+        String regex = "[+-]?\\d+\\.\\d+[eE][+-]?\\d+";
         return input.matches(regex);
     }
 }
